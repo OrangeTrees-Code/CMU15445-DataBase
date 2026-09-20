@@ -48,6 +48,8 @@ class IndexIterator {
   BufferPoolManager *bpm_;
   page_id_t leaf_page_id_;
   int index_;
+  KeyType current_key_{};
+  ValueType current_value_{};
 };
 
 }  // namespace bustub

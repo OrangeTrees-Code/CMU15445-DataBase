@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -74,10 +75,33 @@ class SimpleAggregationHashTable {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       switch (agg_types_[i]) {
         case AggregationType::CountStarAggregate:
+          result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
+          break;
         case AggregationType::CountAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i] = result->aggregates_[i].IsNull()
+                                        ? ValueFactory::GetIntegerValue(1)
+                                        : result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
+          }
+          break;
         case AggregationType::SumAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i] = result->aggregates_[i].IsNull()
+                                        ? input.aggregates_[i]
+                                        : result->aggregates_[i].Add(input.aggregates_[i]);
+          }
+          break;
         case AggregationType::MinAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i] =
+                result->aggregates_[i].IsNull() ? input.aggregates_[i] : result->aggregates_[i].Min(input.aggregates_[i]);
+          }
+          break;
         case AggregationType::MaxAggregate:
+          if (!input.aggregates_[i].IsNull()) {
+            result->aggregates_[i] =
+                result->aggregates_[i].IsNull() ? input.aggregates_[i] : result->aggregates_[i].Max(input.aggregates_[i]);
+          }
           break;
       }
     }
@@ -94,6 +118,8 @@ class SimpleAggregationHashTable {
     }
     CombineAggregateValues(&ht_[agg_key], agg_val);
   }
+
+  void InsertInitial(const AggregateKey &agg_key) { ht_.try_emplace(agg_key, GenerateInitialAggregateValue()); }
 
   /**
    * Clear the hash table
@@ -203,9 +229,9 @@ class AggregationExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   /** Simple aggregation hash table */
-  // TODO(Student): Uncomment SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable aht_;
 
   /** Simple aggregation hash table iterator */
-  // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
+  std::optional<SimpleAggregationHashTable::Iterator> aht_iterator_;
 };
 }  // namespace bustub

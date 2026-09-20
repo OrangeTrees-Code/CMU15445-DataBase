@@ -30,14 +30,14 @@ using SortEntry = std::pair<SortKey, Tuple>;
 
 /** The Tuple Comparator provides a comparison function for SortEntry */
 class TupleComparator {
- public:
-  explicit TupleComparator(std::vector<OrderBy> order_bys);
+   public:
+    explicit TupleComparator(std::vector<OrderBy> order_bys);
 
-  /** TODO(P3): Implement the comparison method */
-  auto operator()(const SortEntry &entry_a, const SortEntry &entry_b) const -> bool;
+    /** TODO(P3): Implement the comparison method */
+    auto operator()(const SortEntry &entry_a, const SortEntry &entry_b) const -> bool;
 
- private:
-  std::vector<OrderBy> order_bys_;
+   private:
+    std::vector<OrderBy> order_bys_;
 };
 
 /**
@@ -67,8 +67,21 @@ auto GenerateUpdatedUndoLog(const Schema *schema, const Tuple *base_tuple, const
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap);
 
-// TODO(P4): Add new functions as needed... You are likely need to define some more functions.
-//
+/** Return whether modifying the current base version would violate snapshot isolation. */
+auto IsWriteWriteConflict(const TupleMeta &meta, Transaction *txn) -> bool;
+
+/**
+ * Atomically replace a tuple with a new version and maintain its undo chain. A null target denotes
+ * a deletion. The transaction is tainted and an ExecutionException is thrown on conflict.
+ */
+void ModifyTuple(const Schema *schema, TableHeap *table_heap, TransactionManager *txn_mgr, Transaction *txn,
+                 table_oid_t table_oid, RID rid, const Tuple *target_tuple);
+
+/** Insert a tuple while enforcing the table's primary-key index and MVCC tombstone rules. */
+void InsertTupleMvcc(const std::shared_ptr<TableInfo> &table_info,
+                     const std::vector<std::shared_ptr<IndexInfo>> &index_infos, TransactionManager *txn_mgr,
+                     Transaction *txn, const Tuple &tuple);
+
 // To give you a sense of what can be shared across executors / transaction manager, here are the
 // list of helper function names that we defined in the reference solution. You should come up with
 // your own when you go through the process.

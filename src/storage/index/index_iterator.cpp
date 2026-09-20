@@ -37,7 +37,9 @@ auto INDEXITERATOR_TYPE::operator*() -> std::pair<const KeyType &, const ValueTy
   auto guard = bpm_->ReadPage(this->leaf_page_id_);
   auto leaf_page = guard.As<B_PLUS_TREE_LEAF_PAGE_TYPE>();
 
-  return {leaf_page->KeyAt(index_), leaf_page->RidAt(index_)};
+  current_key_ = leaf_page->KeyAt(index_);
+  current_value_ = leaf_page->RidAt(index_);
+  return {current_key_, current_value_};
 }
 
 INDEX_TEMPLATE_ARGUMENTS

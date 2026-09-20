@@ -12,8 +12,12 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <optional>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
@@ -23,7 +27,7 @@
 namespace bustub {
 
 /**
- * HashJoinExecutor executes a nested-loop JOIN on two tables.
+ * HashJoinExecutor executes a hash JOIN on two tables.
  */
 class HashJoinExecutor : public AbstractExecutor {
  public:
@@ -52,8 +56,42 @@ class HashJoinExecutor : public AbstractExecutor {
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
  private:
+  /** A composite key made from the values of all join-key expressions. */
+  struct HashJoinKey {
+    std::vector<Value> values_;
+
+    auto operator==(const HashJoinKey &other) const -> bool;
+  };
+
+  /** Hashes a composite join key while preserving its expression order. */
+  struct HashJoinKeyHasher {
+    auto operator()(const HashJoinKey &key) const -> std::size_t;
+  };
+
+  /**
+   * Evaluates every join-key expression for a tuple.
+   *
+   * A NULL key cannot match an equi-join predicate, so it is represented by
+   * std::nullopt rather than inserted/probed in the hash table.
+   */
+  auto MakeJoinKey(const Tuple &tuple, const std::vector<AbstractExpressionRef> &key_expressions,
+                   const Schema &schema) const -> std::optional<HashJoinKey>;
+
+  /** Builds one ordinary joined output tuple. */
+  auto MakeOutputTuple(const Tuple &left, const Tuple &right) const -> Tuple;
+
+  /** Builds the unmatched-left output tuple for a LEFT JOIN. */
+  auto MakeLeftOuterTuple(const Tuple &left) const -> Tuple;
+
   /** The HashJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  std::unique_ptr<AbstractExecutor> left_executor_;
+  std::unique_ptr<AbstractExecutor> right_executor_;
+  std::unordered_map<HashJoinKey, std::vector<Tuple>, HashJoinKeyHasher> hash_table_;
+  std::optional<Tuple> left_tuple_;
+  std::vector<Tuple> matches_;
+  size_t match_cursor_{0};
+  bool left_matched_{false};
 };
 
 }  // namespace bustub
